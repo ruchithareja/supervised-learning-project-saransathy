@@ -51,7 +51,7 @@
 
 # # Import Required Libraries Here
 
-# In[740]:
+# In[853]:
 
 
 import numpy as np
@@ -69,6 +69,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from scipy.stats import zscore
 from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import LabelEncoder
+from sklearn.linear_model import LinearRegression
 get_ipython().magic(u'matplotlib inline')
 
 
@@ -76,7 +77,7 @@ get_ipython().magic(u'matplotlib inline')
 
 # ## Read Excel File
 
-# In[741]:
+# In[854]:
 
 
 # Use read_excel method of Pandas Dataframe to read the data from the spreadsheet
@@ -104,7 +105,7 @@ bpl_data.head()
 # *Kindly Note that categorical data types are already labelled numerically, hence imported that with numeric data type*  
 # *ZIPCode is the only one that is imported as categorical*
 
-# In[742]:
+# In[855]:
 
 
 # Verify the data types before we proceed further
@@ -113,14 +114,14 @@ bpl_data.dtypes
 
 # ## Find the Missing Values
 
-# In[743]:
+# In[856]:
 
 
 # Is there any Missing Values ?
 bpl_data.isnull().values.any()
 
 
-# In[744]:
+# In[857]:
 
 
 # Print the rows that has missing values
@@ -138,7 +139,7 @@ bpl_data[bpl_data.isnull().any(axis=1)]
 # Identify the Mean, Median of the Family Column   
 # Fill the missing values with Mean or Median based on which ever is appropriate  
 
-# In[745]:
+# In[858]:
 
 
 # Describe the statistics in the dataframe
@@ -146,7 +147,7 @@ stats_desc = bpl_data.describe().transpose()
 stats_desc
 
 
-# In[746]:
+# In[859]:
 
 
 # Number of Family Members will be always a whole number and it ranges from 1 to 4 in the dataset
@@ -157,7 +158,7 @@ bpl_data['Family'].fillna((bpl_data['Family'].median()),inplace=True)
 bpl_data.isnull().values.any()
 
 
-# In[747]:
+# In[860]:
 
 
 # Pick randomly any missing value row and check whether the median value is populated 
@@ -166,7 +167,7 @@ bpl_data.loc[722]
 
 # ## Understand the attributes of consumers who took Personal Loan
 
-# In[748]:
+# In[861]:
 
 
 # First lets filter the consumers who accepted personal loan
@@ -175,31 +176,31 @@ bpl_pld = bpl_data[bpl_data['PersonalLoan']==1]
 bpl_pld.describe().transpose()
 
 
-# In[749]:
+# In[862]:
 
 
 bpl_pld.groupby('Education').size().plot(kind='bar')
 
 
-# In[750]:
+# In[863]:
 
 
 bpl_pld.groupby('SecuritiesAccount').size().plot(kind='bar')
 
 
-# In[751]:
+# In[864]:
 
 
 bpl_pld.groupby('CDAccount').size().plot(kind='bar')
 
 
-# In[752]:
+# In[865]:
 
 
 bpl_pld.groupby('NetBanking').size().plot(kind='bar')
 
 
-# In[753]:
+# In[866]:
 
 
 bpl_pld.groupby('CreditCard').size().plot(kind='bar')
@@ -222,7 +223,7 @@ bpl_pld.groupby('CreditCard').size().plot(kind='bar')
 
 # ## Find the Outliers in the data
 
-# In[754]:
+# In[867]:
 
 
 # Calculate InterQuartile Range to find outliers
@@ -237,7 +238,7 @@ stats_desc['rwhisker'] = stats_desc['75%'] + stats_desc['1.5IQR']
 stats_desc
 
 
-# In[755]:
+# In[868]:
 
 
 # Find & print the Outliers (Take into account only Continuous Variables)
@@ -261,7 +262,7 @@ bpl_data[(bpl_data['Age'] < stats_desc.loc['Age'].lwhisker) |
 # *Total Outliers = 602*  
 # *Remaining Data = 4398 Rows*
 
-# In[756]:
+# In[869]:
 
 
 # Drop the outliers
@@ -282,7 +283,7 @@ bpl_nout.shape
 
 # ## Understand the Correlation between the dependant and independant variables
 
-# In[757]:
+# In[870]:
 
 
 # Dependant Variable: PersonalLoan
@@ -306,7 +307,7 @@ bpl_nout.corr(method='pearson').style.format("{:.2}").background_gradient(cmap=p
 # 
 # *Note: The reason for this is that these variables whose value close to zero doesn't have any relationship with Personal Loan, hence the change in those variable values will certainly not impact the prediction
 
-# In[758]:
+# In[871]:
 
 
 # Drop the variables whose correlation is between -0.1 to +0.1, as these variables will not impact prediction of
@@ -323,33 +324,170 @@ bpl_corr.corr(method='pearson').style.format("{:.2}").background_gradient(cmap=p
 
 # ## Understand the Variances of the attributes and remove variables with low variances
 
-# In[759]:
+# In[872]:
 
 
+# Let's use this only for Continous Variables, For Categorical Variables use Chi-Square Test
 bpl_corr.var()
 
 
-# In[760]:
+# In[873]:
 
 
 bpl_corr.var() < 0.1
 
 
-# In[761]:
-
-
-# Drop SecuritiesAccount, CDAccount
-bpl_corr = bpl_corr.drop(['SecuritiesAccount','CDAccount'],axis=1)
-
-
 # ### Observations
+# No continuous variables has low variance, hence nothing to remove
+
+# ### Perform Chi-Square test to perform independance test among the categroical variables
 # 
-# *No continuous variables has low variance, hence nothing to remove*  
-# *SecuritiesAccount, CDAccount Categorical value is having low variance, hence removed it*
+# Remaining Categorical Variables are:  
+# -Education  
+# -NetBanking  
+# -CreditCard  
+# -ZIPCode  
+# -SecuritiesAccount  
+# -CDAccount  
+# -PersonalLoan  
+
+# In[874]:
+
+
+stats.chisquare(bpl_corr["Education"].value_counts())
+#The p-value < 0.05 hence we conclude that Atleast one of the proportions differs
+
+
+# In[875]:
+
+
+stats.chisquare(bpl_corr["NetBanking"].value_counts())
+
+
+# In[876]:
+
+
+stats.chisquare(bpl_corr["CreditCard"].value_counts())
+
+
+# In[877]:
+
+
+stats.chisquare(bpl_corr["ZIPCode"].value_counts())
+
+
+# In[878]:
+
+
+# Goodness of Fit Test between 2 categorical variables
+
+# H0: The two categorical variables are independent
+# Ha: The two categorical variables are dependent
+
+# Creating contingency table
+cont = pd.crosstab(bpl_corr['Education'],bpl_corr['PersonalLoan'])
+cont
+
+
+# In[879]:
+
+
+stats.chi2_contingency(cont)
+
+#The p-value < 0.05 hence I conclude that the 2 categorical variables are dependent
+
+
+# In[880]:
+
+
+# Goodness of Fit Test between 2 categorical variables
+
+# H0: The two categorical variables are independent
+# Ha: The two categorical variables are dependent
+
+# Creating contingency table
+cont = pd.crosstab(bpl_corr['NetBanking'],bpl_corr['PersonalLoan'])
+stats.chi2_contingency(cont)
+
+#The p-value > 0.05 hence I conclude that the 2 categorical variables are indpendent 
+
+
+# In[881]:
+
+
+# Goodness of Fit Test between 2 categorical variables
+
+# H0: The two categorical variables are independent
+# Ha: The two categorical variables are dependent
+
+# Creating contingency table
+cont = pd.crosstab(bpl_corr['CreditCard'],bpl_corr['PersonalLoan'])
+stats.chi2_contingency(cont)
+
+#The p-value > 0.05 hence I conclude that the 2 categorical variables are indpendent 
+
+
+# In[882]:
+
+
+# Goodness of Fit Test between 2 categorical variables
+
+# H0: The two categorical variables are independent
+# Ha: The two categorical variables are dependent
+
+# Creating contingency table
+# To perform this test, 1st ZIPCode need to be converted to Numerical Labels similar to PersonalLoan
+bpl_corr['ZIPCode'] = bpl_corr[bpl_corr.select_dtypes(include='category').columns].apply(
+                                                        LabelEncoder().fit_transform)['ZIPCode']
+cont = pd.crosstab(bpl_corr['ZIPCode'],bpl_corr['PersonalLoan'])
+stats.chi2_contingency(cont)
+
+#The p-value > 0.05 hence I conclude that the 2 categorical variables are indpendent 
+
+
+# In[883]:
+
+
+# Goodness of Fit Test between 2 categorical variables
+
+# H0: The two categorical variables are independent
+# Ha: The two categorical variables are dependent
+
+# Creating contingency table
+cont = pd.crosstab(bpl_corr['SecuritiesAccount'],bpl_corr['PersonalLoan'])
+stats.chi2_contingency(cont)
+
+#The p-value > 0.05 hence I conclude that the 2 categorical variables are independent 
+
+
+# In[884]:
+
+
+# Goodness of Fit Test between 2 categorical variables
+
+# H0: The two categorical variables are independent
+# Ha: The two categorical variables are dependent
+
+# Creating contingency table
+cont = pd.crosstab(bpl_corr['CDAccount'],bpl_corr['PersonalLoan'])
+stats.chi2_contingency(cont)
+
+#The p-value < 0.05 hence I conclude that the 2 categorical variables are dependent 
+
+
+# ### Conclusions
+# 
+# Based on Chi-Square Test, Personal Loan is dependant only on Education & CDAccount. Hence lets drop the rest of the categorical 
+
+# In[885]:
+
+
+bpl_corr = bpl_corr.drop(['NetBanking','CreditCard','SecuritiesAccount','ZIPCode'],axis=1)
+
 
 # ## Split the dependant and independant variables, Check the Distribution
 
-# In[762]:
+# In[886]:
 
 
 # Lets split dependant & indepenadant variables
@@ -362,14 +500,13 @@ sns.pairplot(iv, diag_kind='kde')
 
 # ### Observations
 # 
-# The continuous variables Income & CCAvg distribution is not normal, hence lets normalize it  
-# The ZIPCode doesn't have any relation, hence drop the ZIPCode
+# The continuous variables Income & CCAvg distribution is not normal, hence we can try normalizing it to improve accuracy    
 
 # ## Model the data using Logistic Regression and KNN
 
 # ### Model without Normalizaing the distribution
 
-# In[763]:
+# In[887]:
 
 
 # Use the data where consumers accepted Personal Loan for training Logistic Regression
@@ -378,7 +515,7 @@ iv_train,iv_test,dv_train,dv_test=train_test_split(iv, dv, train_size=0.8, rando
 iv_train.shape
 
 
-# In[764]:
+# In[888]:
 
 
 # As we need to use the previous campaign's customer behavior, let's ensure the split of accepted personal loan's 
@@ -386,77 +523,11 @@ iv_train.shape
 print("Distribution Percentage of previous campaign data\n{}".format((dv_train.value_counts()/dv.value_counts())))
 
 
-# In[765]:
-
-
-model = LogisticRegression()
-model.fit(iv_train, dv_train)
-
-# Train Set Scores
-dv_predict = model.predict(iv_train)
-model_score = model.score(iv_train, dv_train)
-print(model_score)
-print(confusion_matrix(dv_train, dv_predict))
-print("Train Set: Accuracy Score = {}, F1 Score = {}\n\n".format(accuracy_score(dv_train,dv_predict),
-                                                                 f1_score(dv_train,dv_predict)))
-
-# Test Set Scores
-dv_predict = model.predict(iv_test)
-model_score = model.score(iv_test, dv_test)
-print(model_score)
-print(confusion_matrix(dv_test, dv_predict))
-print("Test Set: Accuracy Score = {}, F1 Score = {}".format(accuracy_score(dv_test,dv_predict),
-                                                            f1_score(dv_test,dv_predict)))
-
-
-# ### Observations
-# 
-# 1. We get Accurancy of 94% only & Low F1 Score
-
-# ### Model the same with KNN
-
-# In[766]:
-
-
-# Lets try with KNN Model
-kList = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 31, 33, 35, 37, 39, 41]
-scores = []
-# Perform Cross Validation
-for k in kList:
-    knn = KNeighborsClassifier(n_neighbors=k)
-    scores.append(cross_val_score(knn, iv_train, dv_train, cv=10, scoring='accuracy').mean())
-scores
-
-
-# In[767]:
-
-
-scores_err = [1 - x for x in scores]
-# plot misclassification error vs k
-plt.plot(kList, scores_err)
-plt.xlabel('Number of Neighbors k')
-plt.ylabel('Misclassification Error')
-plt.show()
-
-
-# ### Observations
-# 
-# The accuracy of KNN is almost same as Logistic Regression ~ 94% with Optimal Neighbours as 9
-
-# ### Model by removing ZIPCode but not normalizing the distribution
-
 # ### Logistic Regression
 
-# In[768]:
+# In[889]:
 
 
-iv = bpl_corr.drop(['PersonalLoan','ZIPCode'],axis=1)
-
-
-# In[769]:
-
-
-iv_train,iv_test,dv_train,dv_test=train_test_split(iv, dv, train_size=0.8, random_state=1,stratify=dv)
 model = LogisticRegression()
 model.fit(iv_train, dv_train)
 
@@ -479,12 +550,11 @@ print("Test Set: Accuracy Score = {}, F1 Score = {}".format(accuracy_score(dv_te
 
 # ### Observations
 # 
-# The accuracy score improved to ~96% with improved F1 score as well  
-# Hence the conclusion is that removing ZIPCode is not helping in prediction of PersonalLoan instead it skews the data
+# 1. We get Accurancy of 96% only & F1 Score of 63%
 
 # ### KNN Model
 
-# In[770]:
+# In[890]:
 
 
 # Lets try with KNN Model
@@ -497,7 +567,7 @@ for k in kList:
 scores
 
 
-# In[771]:
+# In[891]:
 
 
 scores_err = [1 - x for x in scores]
@@ -508,28 +578,27 @@ plt.ylabel('Misclassification Error')
 plt.show()
 
 
-# ###### Observations
+# ### Observations
 # 
-# The KNN Model accuracy is minimally improved to 96% and Optimal Neighbours is 5  
-# Removing ZIPCode really impacted KNN Model accuracy
+# The accuracy of KNN is almost same as Logistic Regression ~ 96% with Optimal Neighbours as 1
 
 # ## Normalize the Distribution and Rerun the Models
 
-# In[772]:
+# In[892]:
 
 
 # Reset Independant Variable back to Original Values
-iv = bpl_corr.drop(['PersonalLoan','ZIPCode'],axis=1)
+iv = bpl_corr.drop(['PersonalLoan'],axis=1)
 plt.hist(iv['Income'])
 
 
-# In[773]:
+# In[893]:
 
 
 plt.hist(iv['CCAvg'])
 
 
-# In[774]:
+# In[894]:
 
 
 # Use Z-Score to transform
@@ -537,13 +606,13 @@ iv['Income'] = (iv['Income']-iv['Income'].mean())/iv['Income'].std()
 iv['CCAvg'] = (iv['CCAvg']-iv['CCAvg'].mean())/iv['CCAvg'].std()
 
 
-# In[775]:
+# In[895]:
 
 
 plt.hist(iv['Income'])
 
 
-# In[776]:
+# In[896]:
 
 
 plt.hist(iv['CCAvg'])
@@ -551,7 +620,7 @@ plt.hist(iv['CCAvg'])
 
 # ### Logistic Regression
 
-# In[777]:
+# In[897]:
 
 
 iv_train,iv_test,dv_train,dv_test=train_test_split(iv, dv, train_size=0.8, random_state=1,stratify=dv)
@@ -578,11 +647,11 @@ print("Test Set: Accuracy Score = {}, F1 Score = {}".format(accuracy_score(dv_te
 # ### Observations
 # 
 # No big change in Accuracy after using zscore. 
-# Accuracy is 96.3%
+# Accuracy is 96.4%
 
 # ### KNN Model
 
-# In[778]:
+# In[898]:
 
 
 # Lets try with KNN Model
@@ -595,7 +664,7 @@ for k in kList:
 scores
 
 
-# In[779]:
+# In[899]:
 
 
 scores_err = [1 - x for x in scores]
@@ -608,21 +677,38 @@ plt.show()
 
 # ### Observations:
 # 
-# Optimal Neighbour = 7  
-# Accuracy: 97%
+# Optimal Neighbour = 5
+# Accuracy: 97.7%
 # 
 # KNN Yield better accuracy rate with z-score based distribution  
 # With Optimial Neighbour of 5, the misclassification error is at the lowest
+#   
+# Also you can observe below the accuracy and F1 Score with KNN Model. This is comparitively much better than the Logistic Regression scores.
+
+# In[900]:
+
+
+knn = KNeighborsClassifier(n_neighbors=5)
+knn.fit(iv_train, dv_train)    
+dv_predict = knn.predict(iv_test)
+print(confusion_matrix(dv_test, dv_predict))
+print("Test Set: Accuracy Score = {}, F1 Score = {}".format(accuracy_score(dv_test,dv_predict),
+                                                            f1_score(dv_test,dv_predict)))
+dv_predict = knn.predict(iv_train)
+print(confusion_matrix(dv_train, dv_predict))
+print("Train Set: Accuracy Score = {}, F1 Score = {}".format(accuracy_score(dv_train,dv_predict),
+                                                            f1_score(dv_train,dv_predict)))
+
 
 # ## Other Distribution Models (BoxCox, ...)
 
 # ### BoxCox
 
-# In[780]:
+# In[901]:
 
 
 # Reset Independant Variable back to Original Values
-iv = bpl_corr.drop(['PersonalLoan','ZIPCode'],axis=1)
+iv = bpl_corr.drop('PersonalLoan',axis=1)
 
 # Transform income using boxcox
 # We can't use boxcox with CCAvg as it has zero values
@@ -630,7 +716,9 @@ iv['Income'] = stats.boxcox(iv['Income'],0)
 plt.hist(no_corr['Income'])
 
 
-# In[781]:
+# ### Logistic Regression
+
+# In[902]:
 
 
 iv_train,iv_test,dv_train,dv_test=train_test_split(iv, dv, train_size=0.8, random_state=1,stratify=dv)
@@ -656,7 +744,7 @@ print("Test Set: Accuracy Score = {}, F1 Score = {}".format(accuracy_score(dv_te
 
 # ### KNN Model
 
-# In[782]:
+# In[903]:
 
 
 # Lets try with KNN Model
@@ -669,7 +757,7 @@ for k in kList:
 scores
 
 
-# In[783]:
+# In[904]:
 
 
 scores_err = [1 - x for x in scores]
@@ -680,17 +768,32 @@ plt.ylabel('Misclassification Error')
 plt.show()
 
 
+# In[905]:
+
+
+knn = KNeighborsClassifier(n_neighbors=3)
+knn.fit(iv_train, dv_train)    
+dv_predict = knn.predict(iv_test)
+print(confusion_matrix(dv_test, dv_predict))
+print("Test Set: Accuracy Score = {}, F1 Score = {}".format(accuracy_score(dv_test,dv_predict),
+                                                            f1_score(dv_test,dv_predict)))
+dv_predict = knn.predict(iv_train)
+print(confusion_matrix(dv_train, dv_predict))
+print("Train Set: Accuracy Score = {}, F1 Score = {}".format(accuracy_score(dv_train,dv_predict),
+                                                            f1_score(dv_train,dv_predict)))
+
+
 # ### Observations
-# Logistic Regression Yielded Poor Accuracy with 94.9%
-# KNN Yielded better accuracy with 96.7 & Optimal Neighbour of 3
+# Logistic Regression Yielded Poor Accuracy with ~95%  
+# KNN Yielded better accuracy with 97.8 & Optimal Neighbour of 3, also higher F1 Score
 
 # ### p-Value based
 
-# In[784]:
+# In[906]:
 
 
 # Reset Independant Variable back to Original Values
-iv = bpl_corr.drop(['PersonalLoan','ZIPCode'],axis=1)
+iv = bpl_corr.drop('PersonalLoan',axis=1)
 
 # Transform
 iv['Income'] = stats.norm.cdf(iv['Income'],iv['Income'].mean(),iv['Income'].std())
@@ -699,7 +802,7 @@ iv['CCAvg'] = stats.norm.cdf(iv['CCAvg'],iv['CCAvg'].mean(),iv['CCAvg'].std())
 
 # ### Logistic Regression
 
-# In[785]:
+# In[907]:
 
 
 iv_train,iv_test,dv_train,dv_test=train_test_split(iv, dv, train_size=0.8, random_state=1,stratify=dv)
@@ -725,7 +828,7 @@ print("Test Set: Accuracy Score = {}, F1 Score = {}".format(accuracy_score(dv_te
 
 # ### KNN Model
 
-# In[786]:
+# In[908]:
 
 
 # Lets try with KNN Model
@@ -738,7 +841,7 @@ for k in kList:
 scores
 
 
-# In[787]:
+# In[909]:
 
 
 scores_err = [1 - x for x in scores]
@@ -749,20 +852,73 @@ plt.ylabel('Misclassification Error')
 plt.show()
 
 
+# In[910]:
+
+
+knn = KNeighborsClassifier(n_neighbors=3)
+knn.fit(iv_train, dv_train)    
+dv_predict = knn.predict(iv_test)
+print(confusion_matrix(dv_test, dv_predict))
+print("Test Set: Accuracy Score = {}, F1 Score = {}".format(accuracy_score(dv_test,dv_predict),
+                                                            f1_score(dv_test,dv_predict)))
+dv_predict = knn.predict(iv_train)
+print(confusion_matrix(dv_train, dv_predict))
+print("Train Set: Accuracy Score = {}, F1 Score = {}".format(accuracy_score(dv_train,dv_predict),
+                                                            f1_score(dv_train,dv_predict)))
+
+
 # ### Observations
-# With p-value based distribution also KNN Model yielded better accuracy of 96.8% with optimal neighbour of 11
+# With p-value based distribution also KNN Model yielded better accuracy of 97.3% with optimal neighbour of 3
 
 # # Conclusion
 # 
 # With Z Score & removing outliers the accuracy considerably improved  
-# KNN Model gave the better accuracy & the max of 97%  
+# KNN Model gave the better accuracy & the max of 98%  
+# Logistic Regression accuracy is close to 97% max, but the F1 Score is considerably low here.  
+# Hence the recommendation here is to use KNN Model  
 # 
-# The Personal Loan is dependant on Income, CreditCard Average Spending, Education, Use of InternetBanking & Holding a CreditCard  
+# The Personal Loan is dependant on Income, CreditCard Average Spending & Education
 # 
 # Based on the previous campaign, it's found that the consumers with the following attributes are more likely to   
 # accept the personal loan:
 # 1. Higher income, Higher credit card spend were most likely to accept the personal loand
 # 2. Consumers who have Education with Advanced/Professional has higher probability
-# 3. Holding Credit Card and Perfom Online Banking
 
 # # Thank You
+
+# # Check with Linear Regression
+
+# In[911]:
+
+
+# Reset Independant Variable back to Original Values
+iv = bpl_corr.drop('PersonalLoan',axis=1)
+iv_train,iv_test,dv_train,dv_test=train_test_split(iv, dv, train_size=0.8, random_state=1,stratify=dv)
+
+
+# In[912]:
+
+
+# Create the Regression Model
+regression_model = LinearRegression()
+# Fit the data into the Regression Model
+regression_model.fit(iv_train, dv_train)
+# Score for Test Set
+dv_pred = regression_model.predict(iv_test)
+plt.scatter(dv_test,dv_pred)
+
+
+# In[913]:
+
+
+RSq = regression_model.score(iv_test, dv_test)
+print("R-Square = {}".format(RSq))
+n = len(X_test)
+k = len(X_test.columns)
+ARSq = 1 - (((1-RSq)*(n-1))/(n-k-1))
+print("Adj. R-Square = {}".format(ARSq))
+
+
+# ### Observations
+# 
+# Linear Regression Model doesn't yield accuracies. Linear Regression will not perform good for Classification
